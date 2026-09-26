@@ -24,5 +24,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for item in SAMPLE_CLOTHES:
-            ClothingItem.objects.update_or_create(name=item["name"], defaults=item)
+            ClothingItem.objects.get_or_create(name=item["name"], defaults=item)
         self.stdout.write(self.style.SUCCESS(f"Catalog ready: {len(SAMPLE_CLOTHES)} sample clothing items."))

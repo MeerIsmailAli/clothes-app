@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import AuthDialog from './components/AuthDialog.jsx'
+import CartDrawer from './components/CartDrawer.jsx'
 import { useAuth } from './context/AuthContext.jsx'
+import { useCart } from './context/CartContext.jsx'
 
-const API_URL = import.meta.env.VITE_API_URL || '/api'
+const API_URL = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api` : '/api'
 
 function formatPrice(price) {
   return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(price)
 }
 
-function ClothingCard({ item }) {
+function ClothingCard({ item, onAdd }) {
   return (
     <article className="product-card">
       <div className="product-image">
@@ -20,6 +22,7 @@ function ClothingCard({ item }) {
         <p className="product-category">{item.category}</p>
         {item.description && <p className="product-description">{item.description}</p>}
         {(item.color || item.size) && <p className="product-details">{[item.color, item.size && `Size ${item.size}`].filter(Boolean).join(' · ')}</p>}
+        <button className="add-to-bag" disabled={item.stock < 1} onClick={() => onAdd(item)}>{item.stock > 0 ? 'ADD TO BAG' : 'SOLD OUT'} <span>↗</span></button>
       </div>
     </article>
   )
@@ -27,7 +30,9 @@ function ClothingCard({ item }) {
 
 function App() {
   const { user, logout } = useAuth()
+  const { count, addItem } = useCart()
   const [authOpen, setAuthOpen] = useState(false)
+  const [cartOpen, setCartOpen] = useState(false)
   const [items, setItems] = useState([])
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
@@ -65,6 +70,7 @@ function App() {
         <a className="wordmark" href="#top" aria-label="Thread and Form home"><span className="wordmark-mark">T</span> THREAD & FORM</a>
         <nav className="header-actions" aria-label="Account and store">
           <a className="header-link" href="#collection">THE COLLECTION <span>↘</span></a>
+          <button className="cart-button" onClick={() => setCartOpen(true)}>BAG ({count})</button>
           {user ? <div className="signed-in"><span>HI, {user.username.toUpperCase()}</span><button onClick={logout}>SIGN OUT</button></div> : <button className="account-button" onClick={() => setAuthOpen(true)}>SIGN IN</button>}
         </nav>
       </header>
@@ -92,12 +98,13 @@ function App() {
             </div>
           </div>
 
-          {error ? <div className="notice error-notice">{error}</div> : loading ? <div className="notice">Finding the good stuff…</div> : items.length ? <div className="product-grid">{items.map((item) => <ClothingCard key={item.id} item={item} />)}</div> : <div className="notice empty-state"><span>Nothing on the rack just yet.</span><p>Try another search or check back soon.</p></div>}
+          {error ? <div className="notice error-notice">{error}</div> : loading ? <div className="notice">Finding the good stuff…</div> : items.length ? <div className="product-grid">{items.map((item) => <ClothingCard key={item.id} item={item} onAdd={addItem} />)}</div> : <div className="notice empty-state"><span>Nothing on the rack just yet.</span><p>Try another search or check back soon.</p></div>}
         </section>
       </main>
 
       <footer><a className="wordmark" href="#top"><span className="wordmark-mark">T</span> THREAD & FORM</a><span>GOOD CLOTHES. GOOD DAYS.</span></footer>
       {authOpen && <AuthDialog onClose={() => setAuthOpen(false)} />}
+      {cartOpen && <CartDrawer onClose={() => setCartOpen(false)} />}
     </div>
   )
 }

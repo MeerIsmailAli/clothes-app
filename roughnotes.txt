@@ -1,0 +1,72 @@
+name:meertrial
+passwd:meertrial1
+
+
+
+super user:
+
+name:meer 
+passwd:meer@trial
+
+sqlite3 db.sqlite3
+
+
+## How data flows through the app
+
+flowchart LR
+    U[User in browser] --> R[React storefront]
+    R -->|HTTP requests| V[Vite dev server]
+    V -->|/api requests| D[Django REST API]
+    D --> S[Serializers and permissions]
+    S --> M[Django models]
+    M --> DB[(SQLite database)]
+    DB --> M --> S --> D --> V --> R --> U
+
+### 1. The browser loads the storefront
+
+You open the Vite address in your browser. Vite serves the React app, whose entry point is frontend/src/main.jsx. It mounts the app and its authentication provider.
+
+The storefront code in frontend/src/App.jsx displays the clothing catalog and handles search, category filters, and sorting.
+
+### 2. React requests clothing data
+
+When the catalog loads or a filter changes, React sends a request such as:
+
+GET /api/clothes/?search=linen&ordering=price
+
+During local development, Vite forwards requests beginning with /api to Django at http://127.0.0.1:8000. This proxy avoids needing separate cross-origin settings for the local frontend and backend.
+
+### 3. Django handles the API request
+
+Django routes /api/clothes/ to the clothing API view. The view applies any search, category, stock, or ordering filters, then checks permissions.
+
+Anyone can view the catalog.
+Only staff can create, update, or delete products.
+
+The serializer converts Django model data into JSON for responses, and validates incoming data for writes.
+
+### 4. The API reads and writes the database
+
+The ClothingItem model defines the product fields, such as name, category, price, size, color, and stock. Django uses that model to query the configured database. SQLite is currently configured; MySQL can be selected through environment settings.
+
+When Django returns JSON, React uses it to render the product cards. The database is not accessed directly by the browser.
+
+## How sign-in works
+
+A user enters their username and password in the storefront.
+React sends them to POST /api/auth/token/.
+Django checks the credentials and returns an access token and a refresh token.
+The browser keeps those tokens in session storage for that browser tab.
+The app uses the access token when it requests protected information, such as GET /api/auth/me/. It sends the token in an Authorization: Bearer … header.
+The access token expires after 30 minutes. The app can use the refresh token to obtain another access token; refresh tokens expire after 7 days.
+On sign-out, React clears the browser’s stored tokens and asks Django to revoke the refresh token.
+
+Registration follows the same flow: React sends a username, email, and password to POST /api/auth/register/; Django validates the details, creates the account, and returns tokens.
+
+In short: React handles the interface, Django handles API logic and permissions, serializers translate and validate data, and the database stores it.
+
+
+
+
+colour changes
+hosting

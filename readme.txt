@@ -29,47 +29,16 @@ mkdir ~/styleshop && cd ~/styleshop
 python3 -m venv venv
 source venv/bin/activate
 
-# Install all backend dependencies
-pip install django djangorestframework djangorestframework-simplejwt \
-  django-cors-headers mysqlclient python-decouple
-mysqlclient is the Django-recommended MySQL driver. It needs libmysqlclient-dev which you installed in Step 1.
+# Install this repository's backend dependencies. SQLite works out of the box.
+pip install -r requirements.txt
 
-Start the Django project:
+# For MySQL instead, first install libmysqlclient-dev as above, then:
+pip install -r requirements-mysql.txt
 
-django-admin startproject backend .
-python manage.py startapp store
-Configure MySQL in backend/settings.py — replace the default DATABASES block:
-
-from decouple import config
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': config('DB_NAME', default='styleshop'),
-        'USER': config('DB_USER', default='shopuser'),
-        'PASSWORD': config('DB_PASSWORD', default='yourpassword'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='3306'),
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-        },
-    }
-}
-Create a .env file in your project root (same level as manage.py):
-
-cat > .env << 'EOF'
-DB_NAME=styleshop
-DB_USER=shopuser
-DB_PASSWORD=yourpassword
-DB_HOST=localhost
-DB_PORT=3306
-SECRET_KEY=your-long-random-secret-key-here
-DEBUG=True
-EOF
-Also update settings.py to use the secret key from .env:
-
-SECRET_KEY = config('SECRET_KEY')
-DEBUG = config('DEBUG', default=False, cast=bool)
+This repository already contains the Django project and app. Settings are in
+backend/settings.py. Copy .env.example to .env to configure a local database.
+Set DB_ENGINE=mysql and the DB_* credentials there to select MySQL. PostgreSQL
+providers are configured through DATABASE_URL instead.
 Run migrations:
 
 python manage.py makemigrations
@@ -141,7 +110,8 @@ pip install -r requirements.txt
 python manage.py migrate
 python manage.py seed_clothes
 
-The seed command is safe to rerun; it updates the same 12 sample clothing records.
+The seed command is safe to rerun; it adds any missing sample rows and preserves
+changes made to existing sample items.
 SQLite is the default database. To use the MySQL database from the setup above,
 copy .env.example to .env and set DB_ENGINE=mysql plus your DB credentials. The
 MySQL server and mysqlclient build dependencies must be installed first.
@@ -164,3 +134,24 @@ python manage.py shell -c 'from django.db import connection; connection.ensure_c
 For an SQLite seed row count, run:
 
 python manage.py shell -c 'from store.models import ClothingItem; print(ClothingItem.objects.count())'
+
+Cart and hosting
+----------------
+The storefront cart is stored in the current browser's local storage. It supports
+adding clothing, changing quantities, removing items, and showing a subtotal.
+Checkout and order placement are not implemented yet.
+
+The render.yaml Blueprint prepares a Render static storefront and Django API.
+Create a PostgreSQL database on Neon, then connect your Git repository in Render
+using New > Blueprint. Supply the Neon connection URL when Render requests
+DATABASE_URL. The Blueprint connects the storefront URL to the API and applies
+migrations plus the sample catalog during its build.
+
+Render's free web services sleep after 15 minutes without traffic, and its own
+free PostgreSQL databases expire after 30 days. Neon Free PostgreSQL computes
+sleep after 5 minutes idle and has 0.5 GB storage and 100 compute-hours per month.
+These free tiers suit demos and learning, not a store with production customers.
+See the provider docs for current limits before deployment.
+
+For local MySQL installs, install mysqlclient separately with
+pip install -r requirements-mysql.txt after installing the system MySQL headers.
